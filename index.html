@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FreshMart – Smart Grocery Management</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans for a modern, clean look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Chart.js CDN for Reports charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Main stylesheet -->
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- =====================================================
+       LOGIN PAGE
+       Shown first; hides after successful authentication
+  ====================================================== -->
+  <div id="loginPage" class="login-page">
+    <div class="login-left">
+      <div class="login-brand">
+        <span class="brand-icon">🛒</span>
+        <h1>FreshMart</h1>
+        <p>Smart Grocery Store Management System</p>
+      </div>
+      <div class="login-features">
+        <div class="feature-item"><span>📦</span> Inventory Management</div>
+        <div class="feature-item"><span>🧾</span> Billing & POS</div>
+        <div class="feature-item"><span>📊</span> Sales Reports</div>
+        <div class="feature-item"><span>🔍</span> Product Search</div>
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-card">
+        <h2>Welcome Back</h2>
+        <p class="login-subtitle">Sign in to your account to continue</p>
+
+        <div id="loginError" class="alert alert-error hidden"></div>
+
+        <div class="form-group">
+          <label>Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter username" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password" />
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="loginRole">
+            <option value="admin">Admin / Store Manager</option>
+            <option value="staff">Staff / Cashier</option>
+            <option value="customer">Customer</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary btn-full" onclick="handleLogin()">Sign In</button>
+
+        <!-- Demo credentials panel -->
+        <div class="demo-creds">
+          <p class="demo-title">Demo Credentials</p>
+          <div class="cred-row"><span>Admin:</span><code>admin / admin123</code></div>
+          <div class="cred-row"><span>Staff:</span><code>cashier1 / cash123</code></div>
+          <div class="cred-row"><span>Customer:</span><code>customer / cust123</code></div>
+        </div>
+      </div>
+    </div>
+  </div><!-- /loginPage -->
+
+
+  <!-- =====================================================
+       MAIN APPLICATION (hidden until logged in)
+       Layout: sidebar + top-bar + content sections
+  ====================================================== -->
+  <div id="mainApp" class="app-layout hidden">
+
+    <!-- ---- SIDEBAR ---- -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="brand-icon-sm">🛒</span>
+        <span class="brand-name">FreshMart</span>
+      </div>
+
+      <!-- User info in sidebar -->
+      <div class="sidebar-user">
+        <div class="user-avatar" id="sidebarAvatar">A</div>
+        <div>
+          <div class="user-name" id="sidebarName">Admin</div>
+          <div class="user-role" id="sidebarRole">Administrator</div>
+        </div>
+      </div>
+
+      <!-- Navigation links; some are admin-only -->
+      <nav class="sidebar-nav">
+        <a class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+          <span class="nav-icon">📊</span><span>Dashboard</span>
+        </a>
+        <a class="nav-item" data-page="inventory" onclick="navigateTo('inventory')">
+          <span class="nav-icon">📦</span><span>Inventory</span>
+        </a>
+        <a class="nav-item" data-page="billing" onclick="navigateTo('billing')">
+          <span class="nav-icon">🧾</span><span>Billing / POS</span>
+        </a>
+        <a class="nav-item" data-page="search" onclick="navigateTo('search')">
+          <span class="nav-icon">🔍</span><span>Product Search</span>
+        </a>
+        <a class="nav-item admin-only" data-page="reports" onclick="navigateTo('reports')">
+          <span class="nav-icon">📈</span><span>Reports</span>
+        </a>
+        <a class="nav-item admin-only" data-page="suppliers" onclick="navigateTo('suppliers')">
+          <span class="nav-icon">🚚</span><span>Suppliers</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="btn-logout" onclick="handleLogout()">
+          <span>🚪</span> Logout
+        </button>
+      </div>
+    </aside><!-- /sidebar -->
+
+    <!-- ---- MAIN CONTENT AREA ---- -->
+    <div class="content-area">
+
+      <!-- Top bar with page title + mobile hamburger -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="hamburger" onclick="toggleSidebar()">☰</button>
+          <h2 class="page-title" id="pageTitle">Dashboard</h2>
+        </div>
+        <div class="topbar-right">
+          <span class="topbar-date" id="topbarDate"></span>
+          <div class="topbar-user">
+            <span id="topbarUserName">Admin</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- ---- DASHBOARD SECTION ---- -->
+      <section id="dashboardPage" class="page-section">
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+              <div class="stat-value" id="statTotalProducts">0</div>
+              <div class="stat-label">Total Products</div>
+            </div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="statTodaySales">₹0</div>
+              <div class="stat-label">Today's Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+              <div class="stat-value" id="statLowStock">0</div>
+              <div class="stat-label">Low Stock Alerts</div>
+            </div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon">🧾</div>
+            <div class="stat-info">
+              <div class="stat-value" id="statTotalBills">0</div>
+              <div class="stat-label">Bills Today</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-bottom">
+          <!-- Recent transactions -->
+          <div class="card">
+            <div class="card-header">
+              <h3>Recent Transactions</h3>
+              <button class="btn btn-sm" onclick="navigateTo('reports')">View All</button>
+            </div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Bill #</th>
+                  <th>Time</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Cashier</th>
+                </tr>
+              </thead>
+              <tbody id="recentTransactions"></tbody>
+            </table>
+          </div>
+
+          <!-- Low stock alerts -->
+          <div class="card">
+            <div class="card-header">
+              <h3>⚠️ Low Stock Alerts</h3>
+              <button class="btn btn-sm" onclick="navigateTo('inventory')">Manage</button>
+            </div>
+            <div id="lowStockList" class="low-stock-list"></div>
+          </div>
+        </div>
+      </section><!-- /dashboardPage -->
+
+
+      <!-- ---- INVENTORY SECTION ---- -->
+      <section id="inventoryPage" class="page-section hidden">
+        <div class="section-header">
+          <div>
+            <h2>Product Inventory</h2>
+            <p class="section-sub">Manage all products, prices, and stock levels</p>
+          </div>
+          <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+        </div>
+
+        <!-- Filter & search bar -->
+        <div class="filter-bar">
+          <input
+            type="text"
+            id="inventorySearch"
+            placeholder="🔍  Search by name, category, barcode..."
+            oninput="renderInventoryTable()"
+          />
+          <select id="categoryFilter" onchange="renderInventoryTable()">
+            <option value="">All Categories</option>
+            <option>Dairy</option>
+            <option>Fruits</option>
+            <option>Vegetables</option>
+            <option>Grains</option>
+            <option>Bakery</option>
+            <option>Snacks</option>
+            <option>Beverages</option>
+          </select>
+          <select id="stockFilter" onchange="renderInventoryTable()">
+            <option value="">All Stock</option>
+            <option value="low">Low Stock</option>
+            <option value="ok">In Stock</option>
+          </select>
+        </div>
+
+        <div class="card table-card">
+          <table class="data-table" id="inventoryTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Barcode</th>
+                <th>Product Name</th>
+                <th>Category</th>
+                <th>Price (₹)</th>
+                <th>Quantity</th>
+                <th>Min Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody"></tbody>
+          </table>
+        </div>
+      </section><!-- /inventoryPage -->
+
+
+      <!-- ---- BILLING SECTION ---- -->
+      <section id="billingPage" class="page-section hidden">
+        <div class="section-header">
+          <div>
+            <h2>Billing / POS</h2>
+            <p class="section-sub">Add items to cart and generate bills</p>
+          </div>
+        </div>
+
+        <div class="billing-layout">
+          <!-- Left: product picker -->
+          <div class="billing-left">
+            <!-- Barcode scanner simulation -->
+            <div class="card barcode-card">
+              <label>📷 Barcode Scanner (Simulate)</label>
+              <div class="barcode-row">
+                <input
+                  type="text"
+                  id="barcodeInput"
+                  placeholder="Enter barcode or product ID..."
+                  onkeypress="if(event.key==='Enter') addToCartByBarcode()"
+                />
+                <button class="btn btn-primary" onclick="addToCartByBarcode()">Add</button>
+              </div>
+            </div>
+
+            <!-- Quick search for billing -->
+            <div class="card">
+              <div class="card-header"><h3>Quick Pick</h3></div>
+              <input
+                type="text"
+                id="billingSearch"
+                placeholder="🔍  Search products..."
+                oninput="renderBillingProducts()"
+                style="margin-bottom:12px;"
+              />
+              <div class="billing-product-grid" id="billingProductGrid"></div>
+            </div>
+          </div>
+
+          <!-- Right: cart panel -->
+          <div class="billing-right">
+            <div class="card cart-card">
+              <div class="card-header">
+                <h3>🛒 Cart</h3>
+                <button class="btn btn-sm btn-danger" onclick="clearCart()">Clear</button>
+              </div>
+              <div id="cartItems" class="cart-items"></div>
+              <div class="cart-summary">
+                <div class="summary-row"><span>Subtotal</span><span id="cartSubtotal">₹0.00</span></div>
+                <div class="summary-row"><span>GST (5%)</span><span id="cartTax">₹0.00</span></div>
+                <div class="summary-row total-row"><span>Total</span><span id="cartTotal">₹0.00</span></div>
+              </div>
+              <div class="customer-field">
+                <input type="text" id="customerName" placeholder="Customer name (optional)" />
+              </div>
+              <button class="btn btn-primary btn-full btn-lg" onclick="generateBill()">
+                🧾 Generate Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      </section><!-- /billingPage -->
+
+
+      <!-- ---- PRODUCT SEARCH SECTION (Customer View) ---- -->
+      <section id="searchPage" class="page-section hidden">
+        <div class="search-hero">
+          <h2>🔍 Find Products</h2>
+          <p>Search our store for your favorite products</p>
+          <div class="search-hero-bar">
+            <input
+              type="text"
+              id="customerSearch"
+              placeholder="Search for milk, bread, fruits, vegetables..."
+              oninput="renderCustomerSearch()"
+            />
+          </div>
+          <div class="category-pills" id="categoryPills"></div>
+        </div>
+
+        <div class="search-results-grid" id="customerSearchResults"></div>
+      </section><!-- /searchPage -->
+
+
+      <!-- ---- REPORTS SECTION ---- -->
+      <section id="reportsPage" class="page-section hidden">
+        <div class="section-header">
+          <div>
+            <h2>Reports & Analytics</h2>
+            <p class="section-sub">View sales data and performance metrics</p>
+          </div>
+          <div class="report-filters">
+            <select id="reportPeriod" onchange="renderReports()">
+              <option value="today">Today</option>
+              <option value="week" selected>This Week</option>
+              <option value="month">This Month</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Report stats -->
+        <div class="stats-grid reports-stats">
+          <div class="stat-card blue">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <div class="stat-value" id="rptRevenue">₹0</div>
+              <div class="stat-label">Total Revenue</div>
+            </div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">🧾</div>
+            <div class="stat-info">
+              <div class="stat-value" id="rptBills">0</div>
+              <div class="stat-label">Total Bills</div>
+            </div>
+          </div>
+          <div class="stat-card orange">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+              <div class="stat-value" id="rptItemsSold">0</div>
+              <div class="stat-label">Items Sold</div>
+            </div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon">🛒</div>
+            <div class="stat-info">
+              <div class="stat-value" id="rptAvgBill">₹0</div>
+              <div class="stat-label">Avg Bill Value</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="charts-grid">
+          <div class="card chart-card">
+            <div class="card-header"><h3>Daily Sales (Last 7 Days)</h3></div>
+            <canvas id="salesChart" height="200"></canvas>
+          </div>
+          <div class="card chart-card">
+            <div class="card-header"><h3>Sales by Category</h3></div>
+            <canvas id="categoryChart" height="200"></canvas>
+          </div>
+        </div>
+
+        <!-- Transaction history table -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Transaction History</h3>
+            <input
+              type="text"
+              id="txnSearch"
+              placeholder="Search transactions..."
+              oninput="filterTransactions()"
+              style="width:200px;"
+            />
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Bill #</th>
+                <th>Date & Time</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Subtotal</th>
+                <th>Tax</th>
+                <th>Total</th>
+                <th>Cashier</th>
+              </tr>
+            </thead>
+            <tbody id="transactionBody"></tbody>
+          </table>
+        </div>
+      </section><!-- /reportsPage -->
+
+
+      <!-- ---- SUPPLIERS SECTION ---- -->
+      <section id="suppliersPage" class="page-section hidden">
+        <div class="section-header">
+          <div>
+            <h2>Supplier Management</h2>
+            <p class="section-sub">Track and manage product suppliers</p>
+          </div>
+          <button class="btn btn-primary" onclick="openSupplierModal()">+ Add Supplier</button>
+        </div>
+
+        <div class="card table-card">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Supplier Name</th>
+                <th>Contact</th>
+                <th>Email</th>
+                <th>Address</th>
+                <th>Categories</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="supplierBody"></tbody>
+          </table>
+        </div>
+      </section><!-- /suppliersPage -->
+
+    </div><!-- /content-area -->
+  </div><!-- /mainApp -->
+
+
+  <!-- =====================================================
+       MODALS
+  ====================================================== -->
+
+  <!-- Add/Edit Product Modal -->
+  <div id="productModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="productModalTitle">Add New Product</h3>
+        <button class="modal-close" onclick="closeProductModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editProductId" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Product Name *</label>
+            <input type="text" id="pName" placeholder="e.g. Fresh Milk" />
+          </div>
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="pCategory">
+              <option>Dairy</option>
+              <option>Fruits</option>
+              <option>Vegetables</option>
+              <option>Grains</option>
+              <option>Bakery</option>
+              <option>Snacks</option>
+              <option>Beverages</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Price (₹) *</label>
+            <input type="number" id="pPrice" placeholder="0.00" min="0" step="0.01" />
+          </div>
+          <div class="form-group">
+            <label>Quantity *</label>
+            <input type="number" id="pQuantity" placeholder="0" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Min Stock Alert</label>
+            <input type="number" id="pMinStock" placeholder="5" min="0" />
+          </div>
+          <div class="form-group">
+            <label>Barcode</label>
+            <input type="text" id="pBarcode" placeholder="Auto-generated if blank" />
+          </div>
+          <div class="form-group full-width">
+            <label>Supplier</label>
+            <select id="pSupplier">
+              <option value="">Select supplier...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeProductModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Supplier Modal -->
+  <div id="supplierModal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="supplierModalTitle">Add New Supplier</h3>
+        <button class="modal-close" onclick="closeSupplierModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editSupplierId" />
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Supplier Name *</label>
+            <input type="text" id="sName" placeholder="e.g. Amul Dairy Co." />
+          </div>
+          <div class="form-group">
+            <label>Contact Number *</label>
+            <input type="tel" id="sContact" placeholder="+91 9876543210" />
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" id="sEmail" placeholder="supplier@example.com" />
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <input type="text" id="sAddress" placeholder="City, State" />
+          </div>
+          <div class="form-group full-width">
+            <label>Product Categories Supplied</label>
+            <input type="text" id="sProducts" placeholder="e.g. Dairy, Beverages" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeSupplierModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveSupplier()">Save Supplier</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bill Receipt Modal -->
+  <div id="billModal" class="modal-overlay hidden">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h3>🧾 Bill Receipt</h3>
+        <button class="modal-close" onclick="closeBillModal()">✕</button>
+      </div>
+      <div class="modal-body" id="billContent">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn" onclick="closeBillModal()">Close</button>
+        <button class="btn btn-primary" onclick="printBill()">🖨️ Print</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Main JavaScript -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
